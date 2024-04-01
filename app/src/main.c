@@ -14,7 +14,7 @@ static void user_thread(void *p1, void *p2, void *p3) {
   rust_foo();
 }
 
-#define MY_STACK_SIZE 4096
+#define MY_STACK_SIZE (512 << 10)
 #define MY_PRIORITY -5
 K_THREAD_DEFINE(my_tid, MY_STACK_SIZE,
                 user_thread, NULL, NULL, NULL,
