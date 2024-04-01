@@ -75,6 +75,7 @@ add_custom_command(
   COMMAND ${RUST_BINDGEN}
     ${APP_HEADER}
     --allowlist-item '^app.*'
+    --use-core
     -o ${WASMTIME_BINDINGS}
   DEPENDS ${APP_HEADER}
 )

@@ -2,6 +2,7 @@
 #include <app_version.h>
 #include <zephyr/sys/libc-hooks.h>
 #include <stdio.h>
+#include <stdlib.h>
 
 #include "app.h"
 #include "wasmtime.h"
@@ -9,7 +10,9 @@
 struct k_mem_domain wasmtime_domain;
 
 static void user_thread(void *p1, void *p2, void *p3) {
-  printf("Hello World %d \n", rust_foo());
+  void *ptr = rust_foo();
+  printf("Hello World %p\n", ptr);
+  rust_bar(ptr);
 }
 
 #define MY_STACK_SIZE 4096
@@ -19,11 +22,15 @@ K_THREAD_DEFINE(my_tid, MY_STACK_SIZE,
                 MY_PRIORITY, K_USER, -1);
 
 int main(void) {
-  printf("Hello World %d \n", rust_foo());
+  free(malloc(8));
+  printf("Hello World %p \n", rust_foo());
   printk("Zephyr Example Application %s\n", APP_VERSION_STRING);
 
-  struct k_mem_partition *parts[] = { &z_libc_partition };
-  k_mem_domain_init(&wasmtime_domain, 1, parts);
+  struct k_mem_partition *parts[] = {
+    &z_libc_partition,
+    &z_malloc_partition,
+  };
+  k_mem_domain_init(&wasmtime_domain, 2, parts);
   k_mem_domain_add_thread(&wasmtime_domain, my_tid);
   k_thread_start(my_tid);
   return 0;
@@ -35,4 +42,12 @@ void app_printk(const uint8_t *ptr, size_t len) {
 
 void app_abort() {
   abort();
+}
+
+void* app_alloc(size_t size, size_t align) {
+  return aligned_alloc(align, size);
+}
+
+void app_dealloc(void *ptr) {
+  free(ptr);
 }
