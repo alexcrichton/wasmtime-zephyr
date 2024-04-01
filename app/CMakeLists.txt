@@ -15,11 +15,14 @@ else ()
   message(FATAL_ERROR "don't know how to compile Rust for ${ARCH}")
 endif()
 
-set(WASMTIME_HEADER_DIR ${CMAKE_CURRENT_BINARY_DIR}/wasmtime-generated-header)
+set(WASMTIME_HEADER_DIR ${CMAKE_CURRENT_BINARY_DIR}/wasmtime-generated)
 set(WASMTIME_HEADER ${WASMTIME_HEADER_DIR}/wasmtime.h)
+set(WASMTIME_BINDINGS ${WASMTIME_HEADER_DIR}/bindings.rs)
 set(WASMTIME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../wasmtime)
 set(WASMTIME_TARGET_ROOT ${CMAKE_CURRENT_BINARY_DIR}/wasmtime-target)
 set(WASMTIME_OUTPUT ${WASMTIME_TARGET_ROOT}/${RUST_TARGET}/release/libwasmtime_zephyr.a)
+
+set(APP_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/../include/app.h)
 
 target_sources(app PRIVATE
   src/main.c
@@ -38,11 +41,13 @@ ExternalProject_Add(
   DOWNLOAD_COMMAND    ""
   INSTALL_COMMAND     ""
   BUILD_COMMAND
-    ${CARGO} build
-      --release
-      --target-dir ${WASMTIME_TARGET_ROOT}
-      --target ${RUST_TARGET}
-      --color always                        # TODO: how to read this from cmake
+    ${CMAKE_COMMAND} -E env
+      BINDINGS=${WASMTIME_BINDINGS}
+      ${CARGO} build
+        --release
+        --target-dir ${WASMTIME_TARGET_ROOT}
+        --target ${RUST_TARGET}
+        --color always                        # TODO: how to read this from cmake
   BINARY_DIR          ${WASMTIME_DIR}
   BUILD_ALWAYS        YES
   BUILD_BYPRODUCTS    ${WASMTIME_OUTPUT}
@@ -59,4 +64,14 @@ target_link_libraries(app PUBLIC wasmtime_lib)
 add_custom_command(
   OUTPUT ${WASMTIME_HEADER}
   COMMAND ${RUST_CBINDGEN} --lang C --output ${WASMTIME_HEADER} ${WASMTIME_DIR}
+  DEPENDS wasmtime_lib
 )
+add_custom_command(
+  OUTPUT ${WASMTIME_BINDINGS}
+  COMMAND ${RUST_BINDGEN}
+    ${APP_HEADER}
+    --allowlist-item '^app.*'
+    -o ${WASMTIME_BINDINGS}
+  DEPENDS ${APP_HEADER}
+)
+ExternalProject_Add_StepDependencies(wasmtime_project build ${WASMTIME_BINDINGS})

@@ -9,6 +9,7 @@
 #include <zephyr/logging/log.h>
 #include <stdio.h>
 
+#include "app.h"
 #include "wasmtime.h"
 
 #ifndef CONFIG_USERSPACE
@@ -43,3 +44,10 @@ int main(void)
 	return 0;
 }
 
+void app_printk_rust(const uint8_t *ptr, size_t len) {
+  printk("%.*s", (int) len, (const char*) ptr);
+}
+
+void app_abort() {
+  abort();
+}
