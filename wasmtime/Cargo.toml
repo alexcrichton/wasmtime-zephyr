@@ -5,3 +5,12 @@ edition = "2021"
 
 [lib]
 crate-type = ['staticlib']
+
+[dependencies.wasmtime]
+path = '/home/alex/code/wasmtime/crates/wasmtime'
+default-features = false
+features = ['runtime']
+
+[patch.crates-io]
+wasmparser = { git = 'https://github.com/alexcrichton/wasm-tools', branch = 'nostd' }
+postcard = { git = 'https://github.com/jamesmunns/postcard' }

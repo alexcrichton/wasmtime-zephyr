@@ -1,6 +1,7 @@
 #include <zephyr/kernel.h>
 #include <app_version.h>
 #include <zephyr/sys/libc-hooks.h>
+#include <zephyr/logging/log_ctrl.h>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -10,9 +11,7 @@
 struct k_mem_domain wasmtime_domain;
 
 static void user_thread(void *p1, void *p2, void *p3) {
-  void *ptr = rust_foo();
-  printf("Hello World %p\n", ptr);
-  rust_bar(ptr);
+  rust_foo();
 }
 
 #define MY_STACK_SIZE 4096
@@ -22,8 +21,7 @@ K_THREAD_DEFINE(my_tid, MY_STACK_SIZE,
                 MY_PRIORITY, K_USER, -1);
 
 int main(void) {
-  free(malloc(8));
-  printf("Hello World %p \n", rust_foo());
+  /* LOG_INIT(); */
   printk("Zephyr Example Application %s\n", APP_VERSION_STRING);
 
   struct k_mem_partition *parts[] = {
@@ -50,4 +48,8 @@ void* app_alloc(size_t size, size_t align) {
 
 void app_dealloc(void *ptr) {
   free(ptr);
+}
+
+size_t app_page_size() {
+  return CONFIG_MMU_PAGE_SIZE;
 }

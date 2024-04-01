@@ -5,6 +5,8 @@ project(app)
 
 if (${ARCH} STREQUAL arm64)
   set(RUST_TARGET aarch64-unknown-none)
+elseif (${ARCH} STREQUAL x86)
+  set(RUST_TARGET x86_64-unknown-none)
 else ()
   message(FATAL_ERROR "don't know how to compile Rust for ${ARCH}")
 endif()
@@ -16,13 +18,20 @@ set(WASMTIME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../wasmtime)
 set(WASMTIME_TARGET_ROOT ${CMAKE_CURRENT_BINARY_DIR}/wasmtime-target)
 set(WASMTIME_OUTPUT ${WASMTIME_TARGET_ROOT}/${RUST_TARGET}/release/libwasmtime_zephyr.a)
 
-target_sources(app PRIVATE src/main.c)
+target_sources(app PRIVATE
+  src/main.c
+  src/wasmtime-platform.c
+  src/wasmtime_syscalls.c
+)
 
 # TODO: is there a better or more automatic way to include a header dir?
 zephyr_include_directories(${WASMTIME_HEADER_DIR})
 
 include(ExternalProject)
 find_program(CARGO cargo)
+
+message(wut ${ZEPHYR_BASE})
+message(wut ${APPLICATION_SOURCE_DIR})
 
 ExternalProject_Add(
   wasmtime_project
@@ -33,11 +42,13 @@ ExternalProject_Add(
   BUILD_COMMAND
     ${CMAKE_COMMAND} -E env
       BINDINGS=${WASMTIME_BINDINGS}
+      RUSTFLAGS=-Crelocation-model=static
       ${CARGO} build
         --release
         --target-dir ${WASMTIME_TARGET_ROOT}
         --target ${RUST_TARGET}
         --color always                        # TODO: how to read this from cmake
+        --quiet
   BINARY_DIR          ${WASMTIME_DIR}
   BUILD_ALWAYS        YES
   BUILD_BYPRODUCTS    ${WASMTIME_OUTPUT}
@@ -80,3 +91,24 @@ add_custom_command(
   DEPENDS ${APP_HEADER}
 )
 ExternalProject_Add_StepDependencies(wasmtime_project build ${WASMTIME_BINDINGS})
+
+# Use a local wasmtime install to recompile the `sample.wat`
+set(CWASM_OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/../wasmtime/src/sample.cwasm)
+set(CWASM_INPUT ${CMAKE_CURRENT_SOURCE_DIR}/../wasmtime/src/sample.wat)
+add_custom_command(
+  OUTPUT ${CWASM_OUTPUT}
+  COMMAND
+    cargo run
+      --manifest-path /home/alex/code/wasmtime/Cargo.toml
+      --features all-arch
+      -q
+      compile
+      --target ${RUST_TARGET}
+      ${CWASM_INPUT}
+      --wasm reference-types=n
+      --wasm component-model=n
+      --wasm threads=n
+      -o ${CWASM_OUTPUT}
+  DEPENDS ${CWASM_INPUT}
+)
+ExternalProject_Add_StepDependencies(wasmtime_project build ${CWASM_OUTPUT})
