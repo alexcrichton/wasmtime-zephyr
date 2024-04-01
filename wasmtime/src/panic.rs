@@ -15,7 +15,7 @@ struct AppStderr;
 impl Write for AppStderr {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         unsafe {
-            bindings::app_printk_rust(s.as_ptr(), s.len());
+            bindings::app_printk(s.as_ptr(), s.len());
         }
         Ok(())
     }

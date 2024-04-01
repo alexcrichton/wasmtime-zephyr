@@ -1,9 +1,3 @@
-#-------------------------------------------------------------------------------
-# Zephyr Example Application
-#
-# Copyright (c) 2021 Nordic Semiconductor ASA
-# SPDX-License-Identifier: Apache-2.0
-
 cmake_minimum_required(VERSION 3.13.1)
 find_package(Zephyr REQUIRED HINTS $ENV{ZEPHYR_BASE})
 
@@ -22,24 +16,20 @@ set(WASMTIME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../wasmtime)
 set(WASMTIME_TARGET_ROOT ${CMAKE_CURRENT_BINARY_DIR}/wasmtime-target)
 set(WASMTIME_OUTPUT ${WASMTIME_TARGET_ROOT}/${RUST_TARGET}/release/libwasmtime_zephyr.a)
 
-set(APP_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/../include/app.h)
+target_sources(app PRIVATE src/main.c)
 
-target_sources(app PRIVATE
-  src/main.c
-  ${WASMTIME_HEADER})
+# TODO: is there a better or more automatic way to include a header dir?
 zephyr_include_directories(${WASMTIME_HEADER_DIR})
 
 include(ExternalProject)
-
 find_program(CARGO cargo)
-find_program(RUST_BINDGEN bindgen)
-find_program(RUST_CBINDGEN cbindgen)
 
 ExternalProject_Add(
   wasmtime_project
   CONFIGURE_COMMAND   ""
   DOWNLOAD_COMMAND    ""
   INSTALL_COMMAND     ""
+  # TODO: what RUSTFLAGS should be copied from C to here
   BUILD_COMMAND
     ${CMAKE_COMMAND} -E env
       BINDINGS=${WASMTIME_BINDINGS}
@@ -61,11 +51,25 @@ set_target_properties(wasmtime_lib PROPERTIES IMPORTED_LOCATION ${WASMTIME_OUTPU
 
 target_link_libraries(app PUBLIC wasmtime_lib)
 
+# TODO: is this the best way to specify this? How else to put the rust lib in
+# its own partition?
+set_property(TARGET zephyr_property_target
+             APPEND PROPERTY COMPILE_OPTIONS
+             -l libwasmtime_zephyr.a z_libc_partition)
+
+# Use the Rust `cbindgen` tool to generate a C header file from Rust code.
+find_program(RUST_CBINDGEN cbindgen)
 add_custom_command(
   OUTPUT ${WASMTIME_HEADER}
   COMMAND ${RUST_CBINDGEN} --lang C --output ${WASMTIME_HEADER} ${WASMTIME_DIR}
   DEPENDS wasmtime_lib
 )
+add_custom_target(cbindgen_header DEPENDS ${WASMTIME_HEADER})
+add_dependencies(app cbindgen_header)
+
+# Use the Rust `bindgen` tool to generate Rust bindings for our C header file.
+set(APP_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/../include/app.h)
+find_program(RUST_BINDGEN bindgen)
 add_custom_command(
   OUTPUT ${WASMTIME_BINDINGS}
   COMMAND ${RUST_BINDGEN}

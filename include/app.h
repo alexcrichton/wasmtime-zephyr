@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
-void app_printk_rust(const uint8_t *ptr, size_t len);
+void app_printk(const uint8_t *ptr, size_t len);
 
 __attribute__((noreturn))
 void app_abort(void);
