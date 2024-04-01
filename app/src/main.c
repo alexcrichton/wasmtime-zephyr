@@ -9,6 +9,8 @@
 #include <zephyr/logging/log.h>
 #include <stdio.h>
 
+#include "wasmtime.h"
+
 #ifndef CONFIG_USERSPACE
 #error This requires CONFIG_USERSPACE.
 #endif
@@ -21,18 +23,23 @@ LOG_MODULE_REGISTER(main, CONFIG_APP_LOG_LEVEL);
 struct k_thread user_thread;
 K_THREAD_STACK_DEFINE(user_stack, USER_STACKSIZE);
 
+/* static int foo = 3; */
 static void user_function(void *p1, void *p2, void *p3) {
-  printf("Hello World\n");
+  printf("Hello World %d \n", rust_foo());
+  /* printf("%d\n", foo); */
+  /* foo = 4; */
+  /* printf("%d\n", foo); */
 }
 
 int main(void)
 {
+        /* foo = 8; */
 	printk("Zephyr Example Application %s\n", APP_VERSION_STRING);
         /* printk("%d\n", custom_lib_get_value(1)); */
 
 	k_thread_create(&user_thread, user_stack, USER_STACKSIZE,
 			user_function, NULL, NULL, NULL,
-			-1, K_USER, K_MSEC(0));
+			-1, K_USER | K_INHERIT_PERMS, K_MSEC(0));
 	return 0;
 }
 
