@@ -1,3 +1,5 @@
+#include <zephyr/kernel.h>
+#include <zephyr/app_memory/app_memdomain.h>
 #include <assert.h>
 #include <wasmtime-platform.h>
 
@@ -58,7 +60,7 @@ void wasmtime_memory_image_free(struct wasmtime_memory_image *image) {
 
 // NB: only one thread right now so this is just a `static`, not actually thread
 // local.
-static uint8_t *wasmtime_tls = NULL;
+K_APP_BMEM(z_libc_partition) static uint8_t *wasmtime_tls = NULL;
 
 uint8_t* wasmtime_tls_get(void) {
   return wasmtime_tls;

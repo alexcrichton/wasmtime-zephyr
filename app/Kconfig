@@ -10,6 +10,14 @@ menu "Zephyr"
 source "Kconfig.zephyr"
 endmenu
 
+config WASMTIME_HEAP_SIZE
+  int "Size of memory for the `*.cwasm` image and linear memory"
+  default 2097152
+
+config WASMTIME_NUM_MMAPS
+  int "Maximum number of mmaps to support"
+  default 8
+
 module = APP
 module-str = APP
 source "subsys/logging/Kconfig.template.log_config"

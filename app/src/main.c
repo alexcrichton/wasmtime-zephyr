@@ -7,11 +7,12 @@
 
 #include "app.h"
 #include "wasmtime.h"
-
-struct k_mem_domain wasmtime_domain;
+#include "wasmtime_syscalls.h"
 
 static void user_thread(void *p1, void *p2, void *p3) {
-  rust_foo();
+  int result = rust_add(1, 2);
+
+  printk("user is done in rust: %d\n", result);
 }
 
 #define MY_STACK_SIZE (512 << 10)

@@ -108,6 +108,10 @@ add_custom_command(
       --wasm reference-types=n
       --wasm component-model=n
       --wasm threads=n
+      -O static-memory-maximum-size=0
+      -O dynamic-memory-guard-size=0
+      -O dynamic-memory-reserved-for-growth=0
+      -O guard-before-linear-memory=n
       -o ${CWASM_OUTPUT}
   DEPENDS ${CWASM_INPUT}
 )

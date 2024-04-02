@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stddef.h>
 
+extern struct k_mem_domain wasmtime_domain;
+
 __syscall int mmap_new(size_t size, uint32_t flags, void **ret);
 __syscall int mmap_remap(void *addr, size_t size, uint32_t flags);
 __syscall int mmap_munmap(void *ptr, size_t size);
