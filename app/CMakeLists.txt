@@ -42,7 +42,6 @@ ExternalProject_Add(
   BUILD_COMMAND
     ${CMAKE_COMMAND} -E env
       BINDINGS=${WASMTIME_BINDINGS}
-      RUSTFLAGS=-Crelocation-model=static
       ${CARGO} build
         --release
         --target-dir ${WASMTIME_TARGET_ROOT}

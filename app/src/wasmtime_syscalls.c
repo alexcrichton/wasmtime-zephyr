@@ -10,6 +10,10 @@ LOG_MODULE_REGISTER(wasmtime_syscalls);
 
 struct k_mem_domain wasmtime_domain;
 
+// This heap is where "mmap'd memory" is allocated from.
+//
+// If this could be in flash memory then it should. I don't know how to do that
+// in zephyr right now so it's instead here in the data section.
 K_HEAP_DEFINE(wasmtime_heap, CONFIG_WASMTIME_HEAP_SIZE);
 
 struct wasmtime_mmap {

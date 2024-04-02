@@ -10,9 +10,11 @@
 #include "wasmtime_syscalls.h"
 
 static void user_thread(void *p1, void *p2, void *p3) {
-  int result = rust_add(1, 2);
+  int a = 1;
+  int b = 2;
+  int result = rust_add(a, b);
 
-  printk("user is done in rust: %d\n", result);
+  printk("according to wasm %d + %d = %d\n", a, b, result);
 }
 
 #define MY_STACK_SIZE (512 << 10)
@@ -22,9 +24,6 @@ K_THREAD_DEFINE(my_tid, MY_STACK_SIZE,
                 MY_PRIORITY, K_USER, -1);
 
 int main(void) {
-  /* LOG_INIT(); */
-  printk("Zephyr Example Application %s\n", APP_VERSION_STRING);
-
   struct k_mem_partition *parts[] = {
     &z_libc_partition,
     &z_malloc_partition,
@@ -35,22 +34,23 @@ int main(void) {
   return 0;
 }
 
+// Used in rust panic messages to print things.
 void app_printk(const uint8_t *ptr, size_t len) {
+  // TODO: is there a more appropriate stream to use other than `printk`?
   printk("%.*s", (int) len, (const char*) ptr);
 }
 
+// Used in rust to to abort on a panic.
 void app_abort() {
   abort();
 }
 
+// Memory allocation for Rust
 void* app_alloc(size_t size, size_t align) {
   return aligned_alloc(align, size);
 }
 
+// Memory deallocation for Rust
 void app_dealloc(void *ptr) {
   free(ptr);
-}
-
-size_t app_page_size() {
-  return CONFIG_MMU_PAGE_SIZE;
 }

@@ -5,6 +5,7 @@
 
 #include "wasmtime_syscalls.h"
 
+// These are turned into custom syscalls defined in our custom zephyr kernel
 int wasmtime_mmap_new(uintptr_t size, uint32_t prot_flags, uint8_t **ret) {
   return mmap_new(size, prot_flags, (void**) ret);
 }
