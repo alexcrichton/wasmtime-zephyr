@@ -2,12 +2,17 @@
 
 extern crate alloc;
 
+use wasmtime::component::bindgen;
 use wasmtime::{Config, Engine, Instance, Store};
 
 mod global_allocator;
 mod panic;
 
 const CWASM: &[u8] = include_bytes!("sample.cwasm");
+
+bindgen!({
+    world: "my-world",
+});
 
 fn engine() -> Engine {
     let mut config = Config::new();

@@ -9,7 +9,7 @@ crate-type = ['staticlib']
 [dependencies.wasmtime]
 path = '/home/alex/code/wasmtime/crates/wasmtime'
 default-features = false
-features = ['runtime']
+features = ['runtime', 'component-model']
 
 [patch.crates-io]
 wasmparser = { git = 'https://github.com/alexcrichton/wasm-tools', branch = 'nostd' }

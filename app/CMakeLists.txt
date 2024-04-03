@@ -105,7 +105,6 @@ add_custom_command(
       --target ${RUST_TARGET}
       ${CWASM_INPUT}
       --wasm reference-types=n
-      --wasm component-model=n
       --wasm threads=n
       -O static-memory-maximum-size=0
       -O dynamic-memory-guard-size=0
