@@ -30,8 +30,6 @@ zephyr_include_directories(${WASMTIME_HEADER_DIR})
 include(ExternalProject)
 find_program(CARGO cargo)
 
-message(wut ${ZEPHYR_BASE})
-message(wut ${APPLICATION_SOURCE_DIR})
 
 ExternalProject_Add(
   wasmtime_project
@@ -79,17 +77,52 @@ add_dependencies(app cbindgen_header)
 
 # Use the Rust `bindgen` tool to generate Rust bindings for our C header file.
 set(APP_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/../include/app.h)
+set(APP_STATIC_FNS ${CMAKE_CURRENT_BINARY_DIR}/wasmtime-static-fns.c)
 find_program(RUST_BINDGEN bindgen)
+zephyr_get_include_directories_for_lang(       C includes)
+zephyr_get_system_include_directories_for_lang(C system_includes)
+zephyr_get_compile_definitions_for_lang(       C definitions)
+execute_process(
+  COMMAND ${CMAKE_C_COMPILER} -print-file-name=include
+  OUTPUT_VARIABLE GCC_INCLUDE
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
+execute_process(
+  COMMAND ${CMAKE_C_COMPILER} -print-file-name=include-fixed
+  OUTPUT_VARIABLE GCC_INCLUDE_FIXED
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
 add_custom_command(
   OUTPUT ${WASMTIME_BINDINGS}
   COMMAND ${RUST_BINDGEN}
     ${APP_HEADER}
-    --allowlist-item '^app.*'
-    --use-core
     -o ${WASMTIME_BINDINGS}
+    --use-core
+    --no-layout-tests
+    --experimental
+    --wrap-static-fns
+    --wrap-static-fns-path ${APP_STATIC_FNS}
+    --merge-extern-blocks
+    --no-doc-comments
+    --allowlist-file .*i2c.h
+    --allowlist-file .*app.h
+    --opaque-type device_state
+    --
+    ${includes}
+    ${system_includes}
+    ${definitions}
+    -imacros ${AUTOCONF_H}
+    --target=${RUST_TARGET}
+    -nostdinc
+    -I ${SYSROOT_DIR}/include
+    -I ${SYSROOT_DIR}/sys-include
+    -I ${GCC_INCLUDE}
+    -I ${GCC_INCLUDE_FIXED}
   DEPENDS ${APP_HEADER}
+  VERBATIM
+  COMMAND_EXPAND_LISTS
+  BYPRODUCTS ${APP_STATIC_FNS}
 )
 ExternalProject_Add_StepDependencies(wasmtime_project build ${WASMTIME_BINDINGS})
+target_sources(app PRIVATE ${APP_STATIC_FNS})
 
 # Use a local wasmtime install to recompile the `sample.wat`
 set(CWASM_OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/../wasmtime/src/sample.cwasm)

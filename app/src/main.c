@@ -15,6 +15,11 @@ static void user_thread(void *p1, void *p2, void *p3) {
   int result = rust_add(a, b);
 
   printk("according to wasm %d + %d = %d\n", a, b, result);
+
+  // NB: refer to `rust_run` in a way it can't be optimized away.
+  // TODO: how to create a `const struct device*` to run i2c stuff on?
+  if (result == 4)
+    rust_run(NULL);
 }
 
 #define MY_STACK_SIZE (512 << 10)

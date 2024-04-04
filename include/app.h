@@ -3,6 +3,12 @@
 
 #include <stdint.h>
 #include <stdlib.h>
+#include <zephyr/drivers/i2c.h>
+
+const static uint8_t _I2C_MSG_READ = I2C_MSG_READ;
+const static uint8_t _I2C_MSG_STOP = I2C_MSG_STOP;
+
+struct device;
 
 void app_printk(const uint8_t *ptr, size_t len);
 

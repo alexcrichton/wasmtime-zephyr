@@ -2,17 +2,15 @@
 
 extern crate alloc;
 
-use wasmtime::component::bindgen;
+use core::ffi::c_void;
+use wasmtime::component::{Component, Linker};
 use wasmtime::{Config, Engine, Instance, Store};
 
 mod global_allocator;
+mod i2c;
 mod panic;
 
 const CWASM: &[u8] = include_bytes!("sample.cwasm");
-
-bindgen!({
-    world: "my-world",
-});
 
 fn engine() -> Engine {
     let mut config = Config::new();
@@ -34,6 +32,20 @@ pub unsafe extern "C" fn rust_add(a: i32, b: i32) -> i32 {
     f.call(&mut store, (a, b)).unwrap()
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn rust_run(device: *const c_void) {
+    let engine = engine();
+    let mut linker = Linker::new(&engine);
+    i2c::add_to_linker(&mut linker).unwrap();
+    let component = Component::deserialize(&engine, CWASM).unwrap();
+    let mut data = i2c::StoreState::default();
+    let i2c = data.add_device(device.cast());
+    let mut store = Store::new(&engine, data);
+    let (bindings, _) = i2c::MyWorld::instantiate(&mut store, &component, &linker).unwrap();
+    bindings.call_run(&mut store, i2c).unwrap();
+}
+
+#[allow(warnings)]
 mod bindings {
     include!(env!("BINDINGS"));
 }

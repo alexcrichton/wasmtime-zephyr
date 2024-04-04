@@ -3,5 +3,7 @@ package zephyr:wasmtime;
 world my-world {
   include wasi:i2c/imports@0.2.0-draft;
 
-  export run: func();
+  use wasi:i2c/i2c@0.2.0-draft.{i2c};
+
+  export run: func(i2c: borrow<i2c>);
 }
