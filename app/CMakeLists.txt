@@ -11,12 +11,17 @@ else ()
   message(FATAL_ERROR "don't know how to compile Rust for ${ARCH}")
 endif()
 
-set(WASMTIME_HEADER_DIR ${CMAKE_CURRENT_BINARY_DIR}/wasmtime-generated)
-set(WASMTIME_HEADER ${WASMTIME_HEADER_DIR}/wasmtime.h)
-set(WASMTIME_BINDINGS ${WASMTIME_HEADER_DIR}/bindings.rs)
+set(WASMTIME_GENERATED_DIR ${CMAKE_CURRENT_BINARY_DIR}/wasmtime-generated)
+set(WASMTIME_HEADER ${WASMTIME_GENERATED_DIR}/wasmtime.h)
+set(WASMTIME_HEADER_DEPFILE ${WASMTIME_GENERATED_DIR}/wasmtime.h.d)
+set(WASMTIME_BINDINGS ${WASMTIME_GENERATED_DIR}/bindings.rs)
+set(WASMTIME_BINDINGS_DEPFILE ${WASMTIME_GENERATED_DIR}/bindings.rs.d)
 set(WASMTIME_DIR ${CMAKE_CURRENT_SOURCE_DIR}/../wasmtime)
 set(WASMTIME_TARGET_ROOT ${CMAKE_CURRENT_BINARY_DIR}/wasmtime-target)
 set(WASMTIME_OUTPUT ${WASMTIME_TARGET_ROOT}/${RUST_TARGET}/release/libwasmtime_zephyr.a)
+set(WASMTIME_OUTPUT_STRIPPED ${WASMTIME_GENERATED_DIR}/libwasmtime_zephyr_stripped.a)
+set(CWASM_OUTPUT ${WASMTIME_GENERATED_DIR}/sample.cwasm)
+set(CWASM_INPUT ${WASMTIME_DIR}/src/sample.wat)
 
 target_sources(app PRIVATE
   src/main.c
@@ -25,12 +30,10 @@ target_sources(app PRIVATE
 )
 
 # TODO: is there a better or more automatic way to include a header dir?
-zephyr_include_directories(${WASMTIME_HEADER_DIR})
+zephyr_include_directories(${WASMTIME_GENERATED_DIR})
 
 include(ExternalProject)
 find_program(CARGO cargo)
-
-
 ExternalProject_Add(
   wasmtime_project
   CONFIGURE_COMMAND   ""
@@ -40,6 +43,7 @@ ExternalProject_Add(
   BUILD_COMMAND
     ${CMAKE_COMMAND} -E env
       BINDINGS=${WASMTIME_BINDINGS}
+      CWASM=${CWASM_OUTPUT}
       ${CARGO} build
         --release
         --target-dir ${WASMTIME_TARGET_ROOT}
@@ -50,12 +54,18 @@ ExternalProject_Add(
   BUILD_ALWAYS        YES
   BUILD_BYPRODUCTS    ${WASMTIME_OUTPUT}
 )
+add_custom_command(
+  OUTPUT ${WASMTIME_OUTPUT_STRIPPED}
+  COMMAND ${CMAKE_STRIP} --strip-debug ${WASMTIME_OUTPUT} -o ${WASMTIME_OUTPUT_STRIPPED}
+  DEPENDS wasmtime_project
+)
+add_custom_target(wasmtime_project_stripped DEPENDS ${WASMTIME_OUTPUT_STRIPPED})
 
 add_library(wasmtime_lib STATIC IMPORTED GLOBAL)
-add_dependencies(wasmtime_lib wasmtime_project)
-set_target_properties(wasmtime_lib PROPERTIES IMPORTED_LOCATION ${WASMTIME_OUTPUT})
+add_dependencies(wasmtime_lib wasmtime_project_stripped)
+set_target_properties(wasmtime_lib PROPERTIES IMPORTED_LOCATION ${WASMTIME_OUTPUT_STRIPPED})
 # TODO: unsure why this didn't work
-# set_target_properties(wasmtime_lib PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${WASMTIME_HEADER_DIR})
+# set_target_properties(wasmtime_lib PROPERTIES INTERFACE_INCLUDE_DIRECTORIES ${WASMTIME_GENERATED_DIR})
 
 target_link_libraries(app PUBLIC wasmtime_lib)
 
@@ -69,15 +79,21 @@ set_property(TARGET zephyr_property_target
 find_program(RUST_CBINDGEN cbindgen)
 add_custom_command(
   OUTPUT ${WASMTIME_HEADER}
-  COMMAND ${RUST_CBINDGEN} --lang C --output ${WASMTIME_HEADER} ${WASMTIME_DIR}
-  DEPENDS wasmtime_lib
+  COMMAND
+    ${RUST_CBINDGEN}
+      --lang C
+      --output ${WASMTIME_HEADER}
+      ${WASMTIME_DIR}
+      --depfile ${WASMTIME_HEADER_DEPFILE}
+  DEPFILE ${WASMTIME_HEADER_DEPFILE}
+  BYPRODUCTS ${WASMTIME_HEADER_DEPFILE}
 )
 add_custom_target(cbindgen_header DEPENDS ${WASMTIME_HEADER})
 add_dependencies(app cbindgen_header)
 
 # Use the Rust `bindgen` tool to generate Rust bindings for our C header file.
 set(APP_HEADER ${CMAKE_CURRENT_SOURCE_DIR}/../include/app.h)
-set(APP_STATIC_FNS ${CMAKE_CURRENT_BINARY_DIR}/wasmtime-static-fns.c)
+set(APP_STATIC_FNS ${WASMTIME_GENERATED_DIR}/wasmtime-static-fns.c)
 find_program(RUST_BINDGEN bindgen)
 zephyr_get_include_directories_for_lang(       C includes)
 zephyr_get_system_include_directories_for_lang(C system_includes)
@@ -90,6 +106,9 @@ execute_process(
   COMMAND ${CMAKE_C_COMPILER} -print-file-name=include-fixed
   OUTPUT_VARIABLE GCC_INCLUDE_FIXED
   OUTPUT_STRIP_TRAILING_WHITESPACE)
+
+# message(HELLO)
+# message(${SYSCALL_LIST_H_TARGET})
 add_custom_command(
   OUTPUT ${WASMTIME_BINDINGS}
   COMMAND ${RUST_BINDGEN}
@@ -105,6 +124,7 @@ add_custom_command(
     --allowlist-file .*i2c.h
     --allowlist-file .*app.h
     --opaque-type device_state
+    --depfile ${WASMTIME_BINDINGS_DEPFILE}
     --
     ${includes}
     ${system_includes}
@@ -116,17 +136,19 @@ add_custom_command(
     -I ${SYSROOT_DIR}/sys-include
     -I ${GCC_INCLUDE}
     -I ${GCC_INCLUDE_FIXED}
-  DEPENDS ${APP_HEADER}
+
+  # Depend on the `zephyr_interface` target in Zephyr itself since this depends
+  # on generated headers being available.
+  DEPENDS zephyr_interface
+  DEPFILE ${WASMTIME_BINDINGS_DEPFILE}
   VERBATIM
   COMMAND_EXPAND_LISTS
-  BYPRODUCTS ${APP_STATIC_FNS}
+  BYPRODUCTS ${APP_STATIC_FNS} ${WASMTIME_BINDINGS_DEPFILE}
 )
 ExternalProject_Add_StepDependencies(wasmtime_project build ${WASMTIME_BINDINGS})
 target_sources(app PRIVATE ${APP_STATIC_FNS})
 
 # Use a local wasmtime install to recompile the `sample.wat`
-set(CWASM_OUTPUT ${CMAKE_CURRENT_SOURCE_DIR}/../wasmtime/src/sample.cwasm)
-set(CWASM_INPUT ${CMAKE_CURRENT_SOURCE_DIR}/../wasmtime/src/sample.wat)
 add_custom_command(
   OUTPUT ${CWASM_OUTPUT}
   COMMAND

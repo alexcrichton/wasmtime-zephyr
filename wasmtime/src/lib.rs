@@ -10,7 +10,7 @@ mod global_allocator;
 mod i2c;
 mod panic;
 
-const CWASM: &[u8] = include_bytes!("sample.cwasm");
+const CWASM: &[u8] = include_bytes!(env!("CWASM"));
 
 fn engine() -> Engine {
     let mut config = Config::new();
