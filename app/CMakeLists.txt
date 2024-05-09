@@ -48,7 +48,7 @@ ExternalProject_Add(
         --release
         --target-dir ${WASMTIME_TARGET_ROOT}
         --target ${RUST_TARGET}
-        --color always                        # TODO: how to read this from cmake
+        --color always # TODO: how to read this from cmake
         --quiet
   BINARY_DIR          ${WASMTIME_DIR}
   BUILD_ALWAYS        YES
@@ -73,7 +73,7 @@ target_link_libraries(app PUBLIC wasmtime_lib)
 # its own partition?
 set_property(TARGET zephyr_property_target
              APPEND PROPERTY COMPILE_OPTIONS
-             -l libwasmtime_zephyr.a z_libc_partition)
+             -l libwasmtime_zephyr_stripped.a z_libc_partition)
 
 # Use the Rust `cbindgen` tool to generate a C header file from Rust code.
 find_program(RUST_CBINDGEN cbindgen)
