@@ -18,6 +18,7 @@ mod bindings {
         trappable_error_type: {
             "wasi:i2c/i2c/error-code" => super::I2cError,
         },
+        trappable_imports: true,
     });
 }
 

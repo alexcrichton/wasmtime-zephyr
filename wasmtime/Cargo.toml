@@ -7,10 +7,7 @@ edition = "2021"
 crate-type = ['staticlib']
 
 [dependencies.wasmtime]
-path = '/home/alex/code/wasmtime/crates/wasmtime'
+git = 'https://github.com/bytecodealliance/wasmtime'
+branch = 'release-21.0.0'
 default-features = false
 features = ['runtime', 'component-model']
-
-[patch.crates-io]
-wasmparser = { git = 'https://github.com/alexcrichton/wasm-tools', branch = 'nostd' }
-postcard = { git = 'https://github.com/jamesmunns/postcard' }

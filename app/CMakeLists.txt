@@ -50,6 +50,7 @@ ExternalProject_Add(
         --target ${RUST_TARGET}
         --color always # TODO: how to read this from cmake
         --quiet
+  USES_TERMINAL_BUILD TRUE
   BINARY_DIR          ${WASMTIME_DIR}
   BUILD_ALWAYS        YES
   BUILD_BYPRODUCTS    ${WASMTIME_OUTPUT}
